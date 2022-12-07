@@ -2,7 +2,7 @@
 converts a video to ascii
 
 # Usage
-Call the script like py ascii_video.py path/to/video [fps] [width] [height] path/to/video to create the video resized to width x height and try to run it at the fps provided, it's made in python not expect much
+Call the script like py ascii_video.py [fps] [width] [height] path/to/video to create the video resized to width x height and try to run it at the fps provided, it's made in python not expect much
 ## In other apps
 the usage in other apps will no have a locked frame rate, you should add your own if you so desire
 - **image:** call image_to_ascii
