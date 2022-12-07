@@ -1,18 +1,26 @@
 from sys import argv
 import cv2
-from time import perf_counter_ns, sleep
+from time import perf_counter as time, sleep
+
+# for some reason the normal sleep takes more than the time I need for high framerates, so I did this
+# small trick
+def sleep(duration):
+	now = time()
+	end = now + duration
+	while now < end:
+		now = time()
 
 # Extracts frames from videos
 # made a generator to not clutter dirs in images
 # a frame is extracted a image is processed
-def video_to_ascii(path:str, pwidth:int=0, pheight:int=0, reverse:bool=False, discord:bool=False) -> str:
+def video_to_ascii(path:str, pwidth:int=0, pheight:int=0, reverse:bool=False) -> str:
 	# path to the video
 	vid = cv2.VideoCapture(path)
 	# checks wheter frames where extracted
 	has_frame, frame = vid.read()
 	while has_frame:
 		# converts the frame in ascii
-		res = image_to_ascii(frame, pwidth, pheight, reverse, discord)
+		res = image_to_ascii(frame, pwidth, pheight, reverse)
 		# extracts the frames
 		has_frame, frame = vid.read()
 		yield res
@@ -42,8 +50,7 @@ def resize(img, pwidth:int=0, pheight:int=0):
 # pwidth is the width of the image, don't use if you don't want to resize
 # pheight is the height of the image, don't use if you don't want to resize
 # reverse inverts the whitescale
-# discord uses a different charset in order to make it look better in discord
-def image_to_ascii(src, pwidth:int=0, pheight:int=0, reverse:bool=False, discord:bool=False):
+def image_to_ascii(src, pwidth:int=0, pheight:int=0, reverse:bool=False) -> str:
 	if (type(src) == str):
 		src = cv2.imread(src)
 	# convert image to gray scale
@@ -60,13 +67,10 @@ def image_to_ascii(src, pwidth:int=0, pheight:int=0, reverse:bool=False, discord
 	# so we have to darkness * len(chars) - 1 / 255  to get the best index
 	# so if we have 10 chars and we have to convert a pixel of value 67 we
 	# divide 9 / 255 to get 0.035 and the we mult 67 * 0.035 and we get 2.36
-	# so we truncate it to 2, so the char would be ":"
+	# so we truncate it to 2, so the char would be "⠆"
 	# since this operation is length dependant we can add whatever char we like 
 	# and it will be added to its range, a char hue if you like
-	chars = ' .,_-~=+*:;!?#%@'
-	# since discord can't send empty messages ans some characters do weird stuff we don't send them
-	# also we use monospace characters
-	if discord: chars = '⠄⠆⠖⠶⡶⣩⣪⣫⣾⣿'
+	chars = '⠀⠄⠆⠖⠶⡶⣩⣪⣫⣾⣿░▒▓█'
 	# to reverse the spectrum we reverse the string
 	if reverse: chars = chars[::-1]
 	# store to ease computations
@@ -88,39 +92,30 @@ def image_to_ascii(src, pwidth:int=0, pheight:int=0, reverse:bool=False, discord
 
 	return printable_arr
 
-# generator for the bot
-async def async_process(vid_path:str, pwidth:int, pheight:int):
-	for res in video_to_ascii(vid_path, pwidth=pwidth, pheight=pheight, discord=True, reverse=True):
+# generator for ease of use
+async def async_process(vid_path:str, pwidth:int, pheight:int, reverse:bool=False):
+	for res in video_to_ascii(vid_path, pwidth=pwidth, pheight=pheight, reverse=reverse):
 		yield res
 
-def process(vid_path:str, pwidth:int, pheight:int):
-	arr = []
-	for res in video_to_ascii(vid_path, pwidth=pwidth, pheight=pheight, discord=True, reverse=True):
-		arr.append(res)
-	return arr
+def process(vid_path:str, pwidth:int, pheight:int, reverse:bool=False):
+	for res in video_to_ascii(vid_path, pwidth=pwidth, pheight=pheight, reverse=reverse):
+		yield res
 
-def lock_framerate(frame_rate, frame, op):
-	rate = 10e9/frame_rate
-	start = perf_counter_ns()
-	op(frame)
-	end = perf_counter_ns()
-	if end - start < rate:
+def lock_framerate(frame_rate, frame):
+	rate = 1.0/frame_rate
+	start = time()
+	print(frame, '\033[H')
+	end = time()
+	if (end - start) < rate:
 		sleep(rate - (end - start))
 
 def main():
 	# check if we are looping 
+	fps = int(argv[1]) if len(argv) > 2 else 60
 	width = int(argv[2]) if len(argv) > 3 else 0
 	height = int(argv[3]) if len(argv) > 4 else 0
-	fps = int(argv[4]) if len(argv) > 2 else 24
-
-	if'-l' in argv and len(argv) > 5:
-		while True:
-			[lock_framerate(fps, frame, print) for frame in video_to_ascii(argv[1], pwidth=width, pheight=height)]
-	else:
-		[lock_framerate(fps, frame, print) for frame in video_to_ascii(argv[1], pwidth=width, pheight=height)]
-
-
-
+	print('\033[2J\033[H')
+	[lock_framerate(fps, frame) for frame in process(argv[-1], pwidth=width, pheight=height)]
 
 
 
