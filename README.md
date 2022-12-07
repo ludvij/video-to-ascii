@@ -18,7 +18,7 @@ async for res in agen:
     await # your usage here
 ```
 
-# Usage
+# ⚠ Important ⚠ 
 You need to have opencv2-python imported
 ```sh
 python -m pip insall opencv2-python
